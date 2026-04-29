@@ -1,4 +1,4 @@
-crewai>=0.30.0
+crewai
 crewai-tools
 yfinance
 google-search-results
