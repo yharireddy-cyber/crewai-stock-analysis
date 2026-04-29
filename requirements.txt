@@ -1,5 +1,4 @@
 groq
-crewai>=0.30.0
 crewai-tools
 yfinance
 google-search-results
