@@ -1,4 +1,3 @@
-groq
 crewai>=0.30.0
 crewai-tools
 yfinance
@@ -6,4 +5,3 @@ google-search-results
 litellm>=1.40.0
 streamlit
 pydantic
-serpapi
