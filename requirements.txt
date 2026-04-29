@@ -1,7 +1,9 @@
 groq
-crew
+crewai
 crewai-tools
 yfinance
 google-search-results
 litellm
 streamlit
+pydantic
+serpapi
