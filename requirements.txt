@@ -1,7 +1,10 @@
-crewai
+groq
+crewai>=0.51.0
 crewai-tools
 yfinance
 google-search-results
 litellm>=1.40.0
 streamlit
-pydantic
+pydantic>=2.0
+serpapi
+tiktoken==0.0.0
