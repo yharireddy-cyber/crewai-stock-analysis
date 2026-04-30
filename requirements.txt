@@ -1,6 +1,9 @@
-streamlit
-groq>=1.2.0
+groq
+crewai
+crewai-tools
 yfinance
 google-search-results
-pydantic>=2.0
+litellm
+streamlit
+pydantic
 serpapi
