@@ -1,10 +1,6 @@
-groq
-crewai>=0.51.0
-crewai-tools
+streamlit
+groq>=1.2.0
 yfinance
 google-search-results
-litellm>=1.56.8
-streamlit
 pydantic>=2.0
 serpapi
-tiktoken==0.0.0
