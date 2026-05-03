@@ -27,7 +27,12 @@ with st.sidebar:
     serpapi_key = st.text_input("Enter your SerpAPI Key", type="password")
     st.markdown("[Get your SerpAPI Key here](https://serpapi.com/dashboard)")
     st.markdown("---")
-    st.info("Use of Groq and SerpAPI keys is required for the app to function properly. please enter your keys to proceed.")
+    st.info("Use of Groq and SerpAPI keys is required for the app to function properly. For Now keys are integrated with app.")
+    
+
+# Read from Render environment
+groq_key = os.getenv("GROQ_API_KEY")
+serpapi_key = os.getenv("SERPAPI_KEY")
 
 if not groq_key or not serpapi_key:
     st.warning("Please enter both Groq and SerpAPI keys to use the app.")
