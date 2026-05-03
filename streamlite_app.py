@@ -2,6 +2,8 @@
 ##pip install crew crewai-tools yfinance google-search-results litellm streamlit
 import streamlit as st
 import os
+import math
+import datetime
 from crewai import Crew, Agent,Task,LLM
 from crewai.tools import BaseTool
 from typing import Type
@@ -9,6 +11,7 @@ from pydantic import BaseModel, Field
 import yfinance as yf
 from serpapi import GoogleSearch
 import warnings
+import datetime
 warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="Stock Analysis App", page_icon="📈", layout="wide")
@@ -35,35 +38,49 @@ os.environ["GROQ_API_KEY"] = groq_key
 os.environ["SERPAPI_KEY"] = serpapi_key
 
 ## initialize LLM
-@st.cache_resource
-def get_llm(groq_key):
-    ##llama-3.1-8b-instant
-    return LLM(model="groq/llama-3.3-70b-versatile", api_key=groq_key, temperature=0.3,
-               max_tokens=200)
+##@st.cache_resource
+def get_llms(groq_key):
+    fast_llm = LLM(
+        model="groq/llama-3.1-8b-instant",
+        api_key=groq_key,
+        temperature=0.15,
+        max_tokens=100
+    )
 
-llm = get_llm(groq_key)
+    smart_llm = LLM(
+        model="groq/llama-3.3-70b-versatile",
+        api_key=groq_key,
+        temperature=0.2,
+        max_tokens=120
+    )
+
+    return fast_llm, smart_llm
+
+fast_llm, smart_llm = get_llms(groq_key)
+
 
 ## define tools for agents
 class StockSearchInput(BaseModel):
     query: str = Field(..., description="The stock ticker or company name to search for")
 
 class YahooFinanceInput(BaseModel):
-    ticker: str = Field(..., description="The stock ticker symbol to fetch data for")
+    ticker: str = Field(..., description="The stock ticker or company name to fetch data for")
 
 class StockSearchTool(BaseTool):
     name: str = "stock_new_search"
-    description: str = "Search for latest news and information about a stock using SerpAPI"
+    description: str = "Search for latest news and information about a Stock including after hours as of current date and time only using SerpAPI"
     args_schema: Type[BaseModel] = StockSearchInput
 
     def _run(self, query: str) -> str:
-        "search for news related to the stock using SerpAPI and return the top 5 results"
+        "search for news related to only the stock including after hours as of current date and time  using SerpAPI  and return the top 5 results"
         try:
             params = {
                 "engine": "google",
                 "q": query,
                 "api_key": os.getenv("SERPAPI_KEY"),
                 "tb": "nws",
-                "num": 5
+                "num": 7,
+                "sort": "date"
             }
             search = GoogleSearch(params)
             results = search.get_dict()
@@ -82,55 +99,136 @@ class StockSearchTool(BaseTool):
 
 class YahooFinanceTool(BaseTool):
     name: str = "YahooFinanceData"
-    description: str = "Fetch stock data from Yahoo Finance using yfinance library"
+    description: str = "Fetch live stock price and recent data from Yahoo Finance using yfinance library"
     args_schema: Type[BaseModel] = YahooFinanceInput
 
     def _run(self, ticker: str) -> str:
-        "fetch stock data for the given ticker using yfinance and return current price and change percentage"
-        try:
+        "fetch stock data for the given ticker using yfinance and return live intraday and 1-month changes"
+        try:            
             stock = yf.Ticker(ticker)
-            hist = stock.history(period="1mo")
+            today = datetime.datetime.now().date()
             
-            if hist.empty:
-                return "No data found for the given ticker."
-            latest = hist.tail(5)
-            current = latest["Close"].iloc[-1]
-            change = (latest["Close"].iloc[-1] - latest["Close"].iloc[0]) / latest["Close"].iloc[0] * 100
+            # Get today's latest intraday data (1-minute intervals with pre/post market)
+            today_hist = stock.history(start=today, end=today + datetime.timedelta(days=1), interval="1m", prepost=True)
+            
+            if today_hist.empty:
+                # Fallback to regular daily data
+                today_hist = stock.history(start=today, end=today + datetime.timedelta(days=1))
+            
+            # Extract live data
+            if not today_hist.empty:
+                current = float(today_hist["Close"].iloc[-1])  # Latest close = current price
+                todays_open = float(today_hist["Open"].iloc[0])
+                todays_high = float(today_hist["High"].max())
+                todays_low = float(today_hist["Low"].min())
+            else:
+                # Fallback to fast_info if history is empty
+                try:
+                    fast_info = stock.fast_info
+                    current = float(fast_info.get('lastPrice') or fast_info.get('regularMarketPrice') or 0)
+                    todays_high = float(fast_info.get('dayHigh') or 0)
+                    todays_low = float(fast_info.get('dayLow') or 0)
+                    todays_open = float(fast_info.get('open') or 0)
+                except:
+                    return "Error: Unable to fetch live data for this ticker"
+            
+            # Calculate intraday change
+            intraday_pct = ((current - todays_open) / todays_open * 100) if todays_open > 0 else 0.0
+            
+            six_month_change_text = "data unavailable"
 
-            return f"""Stock: {ticker.upper()}\n Price: ${current:.2f}\n Change (1 month) {change:.2f}%\nHigh: ${latest["High"].max():.2f}\nLow: ${latest["Low"].min():.2f}"""
+            # 6 months ≈ 182 days
+            six_month_hist = stock.history(
+                start=today - datetime.timedelta(days=182),
+                end=today + datetime.timedelta(days=1)
+            )
+
+            if not six_month_hist.empty and len(six_month_hist) > 1:
+                six_month_start = float(six_month_hist["Close"].iloc[0])
+                six_month_end = float(six_month_hist["Close"].iloc[-1])
+
+            six_month_change = (
+                (six_month_end - six_month_start) / six_month_start * 100
+                if six_month_start > 0 else None
+            )
+
+            six_month_change_text = (
+                f"{six_month_change:.2f}%"
+                if six_month_change is not None else "data unavailable"
+            )
+
+            
+            # Format output
+            return (
+                f"Stock: {ticker.upper()}\n"
+                f"Current price: ${current:.2f}\n"
+                f"Intraday change: {intraday_pct:.2f}%\n"
+                f"Six-month change: {six_month_change_text}\n"
+                f"Today's high: ${todays_high:.2f}\n"
+                f"Today's low: ${todays_low:.2f}"
+            )
         except Exception as e:
             return f"Error fetching stock data: {str(e)}"
-        
+                    
 ## initializing the tools
 stock_search_tool = StockSearchTool()
 yahoo_finance_tool = YahooFinanceTool()
 
-@st.cache_resource
-def get_agent(llm):
+##@st.cache_resource
+def get_agent(fast_llm, smart_llm):
     analyst = Agent(
         role="Stock Analyst Agent",
-        goal="Analyze the stock based on latest news and financial data, and provide insights and recommendations. You MUST use ONLY the two tools available: stock_new_search (for news) and YahooFinanceData (for financial data). return only stock insgihts and recommendations.",
-        backstory="You are a stock analyst with expertise in financial markets. You have access to exactly two tools: 1) stock_new_search tool to search for latest news about stocks, and 2) YahooFinanceData tool to fetch stock price and financial data. Use these tools to gather information and provide insights. DO NOT attempt to use any other tools.",
-        llm=llm,
+        goal=(
+            "Analyze the stock using ONLY the two provided tools: stock_new_search (for news) and YahooFinanceData (for financial data). "
+            "Do NOT use any other tools or external services. Focus only on news related to the company that directly impacts the stock price. "
+            "Provide insights and recommendations based on the latest news and financial data. Return ONLY stock insights and recommendations."
+        ),
+        backstory=(
+            "You are a stock analyst with expertise in financial markets. You have access to ONLY TWO TOOLS: 'stock_new_search' for news and 'YahooFinanceData' for financial data. "
+            "Do NOT attempt to use any other tools, functions, or external services. Do NOT invent tools. Only use the tools provided in this system. "
+            "Use the available tools to surface the most recent and relevant information. "
+            "Focus on news that has a direct impact on the stock price, such as earnings reports, product launches, regulatory changes, or market trends. "
+            "Provide insights and recommendations based on the data you gather. Your output should be concise and focused on actionable insights for the user."),
+        llm=fast_llm,
         tools=[stock_search_tool, yahoo_finance_tool]
     )
 
     writer = Agent(
         role="Report Writer Agent",
-        goal="Write a simple stock analysis report based on the insights provided by the analyst agent.",
-        backstory="You are a skilled writer with expertise in financial writing. Your task is to write a simple stock analysis report based on the insights provided by the analyst agent. The report should be well-structured, informative, and easy to understand for the user and limited in scope  .",
-        llm=llm
+        goal=(
+            "Write a stock analysis report based on the insights provided by the analyst agent. "
+            "Format the output EXACTLY as follows with Markdown bullet points for the Price Snapshot section:\n\n"
+            "Summary:\n"
+            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement. consider last six months stock price movement and latest news.\n\n"
+            "Price Snapshot:\n"
+            "- Current price: $[price]\n"
+            "- Today's high: $[price]\n"
+            "- Today's low: $[price]\n"
+            "- Intraday change: [percent]\n"
+            "- Six-month change: [percent]\n\n"
+            "Recommendation:\n"
+            "- One short conclusion with a buy/hold/sell view.\n"
+            "IMPORTANT: Do not present the Price Snapshot as a sentence or paragraph. Each metric must be its own bullet line beginning with '- '. "
+            "The summary and recommendation MUST be consistent with the Price Snapshot values. "
+            "Keep recommendation aligned with the data and keep it under 100 words. Do not mention specific price or percentage values in the summary, just a general performance overview."
+        ),
+        backstory=(
+            "You are a skilled financial writer. Produce a concise and professional report using the requested sections. "
+            "Make sure the summary  matches the price movement and that the recommendation is aligned with the data."
+            "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from six one month from analyze agent."
+        ),
+        llm=smart_llm
     )
     return analyst, writer
 
-analyst_agent, writer_agent = get_agent(llm)
+analyst_agent, writer_agent = get_agent(fast_llm=fast_llm, smart_llm=smart_llm)
 
 
 ## interface for user input
 col1,col2 = st.columns((2,1))
 
 with col1:
-    ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, GOOGL, TSLA)", value="AAPL", max_chars=6).upper()
+    ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, GOOGL, TSLA)", value="AAPL", max_chars=10).upper()
 
 with col2:
     analyze_button = st.button("Analyze Stock", type="primary",use_container_width=True)
@@ -155,7 +253,7 @@ if analyze_button:
                 )
 
                 report_task = Task(
-                    description=f"Write a comprehensive stock analysis report for {ticker} based on the insights from the analyst agent and keep it under 300 words.",
+                    description=f"Write a comprehensive stock analysis report for {ticker} based on the insights from the analyst agent",
                     expected_output="A well-structured and informative stock analysis report",
                     agent=writer_agent
                 )
@@ -164,24 +262,36 @@ if analyze_button:
                     agents = [analyst_agent, writer_agent],
                     tasks = [new_task, price_task, report_task]
                 )
-                results = crew.kickoff()
+                try:
+                    results = crew.kickoff()
+                except Exception as e:
+                    error_text = str(e)
+                    if "rate limit" in error_text.lower() or "tokens per minute" in error_text.lower() or "ratelimiterror" in error_text.lower():
+                        st.error(
+                            "Groq rate limit reached. Please wait 10 seconds and try again, or reduce request frequency. "
+                            "If this continues, upgrade your Groq tier for higher TPM."
+                        )
+                    else:
+                        st.error(f"An error occurred during stock analysis: {error_text}")
+                    results = None
 
-                ## convert to string for display
-                result_txt = str(results)
-                st.success("Stock analysis completed!")
+                if results is not None:
+                    ## convert to string for display
+                    result_txt = str(results)
+                    st.success("Stock analysis completed!")
 
-                st.markdown("-------------------")
-                st.markdown(f"### Stock Analysis Report for {ticker}")
-                st.markdown(result_txt)
-                st.markdown("--------------------")
+                    st.markdown("-------------------")
+                    st.markdown(f"### Stock Analysis Report for {ticker}")
+                    st.markdown(result_txt)
+                    st.markdown("--------------------")
 
-                ## download option for the report
-                st.download_button(
-                    label="Download Report",
-                    data=result_txt,
-                    file_name=f"{ticker}_stock_analysis_report.txt",
-                    mime="text/plain"
-                )
+                    ## download option for the report
+                    st.download_button(
+                        label="Download Report",
+                        data=result_txt,
+                        file_name=f"{ticker}_stock_analysis_report.txt",
+                        mime="text/plain"
+                    )
             except Exception as e:
                 st.error(f"An error occurred during stock analysis: {str(e)}")
 
