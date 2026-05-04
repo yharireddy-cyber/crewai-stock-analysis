@@ -131,28 +131,28 @@ class YahooFinanceTool(BaseTool):
             else:
                 intraday_pct = 0.0
 
-            # --- 3) Six‑month change ---
-            six_month_hist = stock.history(
+            # --- 3) one  change ---
+            one_year_hist = stock.history(
             start=today - datetime.timedelta(days=365),
             end=today + datetime.timedelta(days=1)
             )
 
-            six_month_change_text = "data unavailable"
+            one_year_change_text = "data unavailable"
 
-            if not six_month_hist.empty and len(six_month_hist) > 1:
-                start_price = float(six_month_hist["Close"].iloc[0])
-                end_price = float(six_month_hist["Close"].iloc[-1])
+            if not one_year_hist.empty and len(one_year_hist) > 1:
+                start_price = float(one_year_hist["Close"].iloc[0])
+                end_price = float(one_year_hist["Close"].iloc[-1])
 
             if start_price > 0:
                 change = (end_price - start_price) / start_price * 100
-                six_month_change_text = f"{change:.2f}%"
+                one_year_change_text = f"{change:.2f}%"
 
             # --- 4) Format output ---
             return (
                 f"Stock: {ticker.upper()}\n"
                 f"Current price: ${current:.2f}\n"
                 f"Intraday change: {intraday_pct:.2f}%\n"
-                f"Six-month change: {six_month_change_text}\n"
+                f"One-year change: {one_year_change_text}\n"
                 f"Today's high: ${todays_high}\n"
                 ##f"Today's low: ${todays_low}"
             )
@@ -176,13 +176,13 @@ def get_agent(fast_llm):
             "Write a stock analysis report based on the insights provided by the analyst agent. "
             "Format the output EXACTLY as follows with Markdown bullet points for the Price Snapshot section:\n\n"
             "Summary:\n"
-            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement. consider last six months stock price movement and latest news.\n\n"
+            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement. consider last one year stock price movement and latest news.\n\n"
             "Price Snapshot:\n"
             "- Current price: $[price]\n"
             "- Today's high: $[price]\n"
             ##"- Today's low: $[price]\n"
             "- Intraday change: [percent]\n"
-            "- Six-month change: [percent]\n\n"
+            "- One-year change: [percent]\n\n"
             "Recommendation:\n"
             "- One short conclusion with a buy/hold/sell view.\n"
             "IMPORTANT: Do not present the Price Snapshot as a sentence or paragraph. Each metric must be its own bullet line beginning with '- '. "
@@ -197,7 +197,7 @@ def get_agent(fast_llm):
             "Provide insights and recommendations based on the data you gather. Your output should be concise and focused on actionable insights for the user."
             "You are a skilled financial writer. Produce a concise and professional report using the requested sections. "
             "Make sure the summary  matches the price movement and that the recommendation is aligned with the data."
-            "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from six one month from analyze agent."),
+            "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from one year from analyze agent."),
         llm=fast_llm,
         tools=[stock_search_tool, yahoo_finance_tool]
     )
