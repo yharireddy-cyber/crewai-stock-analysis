@@ -28,7 +28,7 @@ with st.sidebar:
     st.markdown("[Get your SerpAPI Key here](https://serpapi.com/dashboard)")
     st.markdown("---")
     st.info("Use of Groq and SerpAPI keys is required for the app to function properly. For Now keys are integrated with app.")
-    
+
 
 # Read from Render environment
 groq_key = os.getenv("GROQ_API_KEY")
@@ -267,18 +267,8 @@ if analyze_button:
                     agents = [analyst_agent, writer_agent],
                     tasks = [new_task, price_task, report_task]
                 )
-                try:
-                    results = crew.kickoff()
-                except Exception as e:
-                    error_text = str(e)
-                    if "rate limit" in error_text.lower() or "tokens per minute" in error_text.lower() or "ratelimiterror" in error_text.lower():
-                        st.error(
-                            "Groq rate limit reached. Please wait 10 seconds and try again, or reduce request frequency. "
-                            "If this continues, upgrade your Groq tier for higher TPM."
-                        )
-                    else:
-                        st.error(f"An error occurred during stock analysis: {error_text}")
-                    results = None
+                results = crew.kickoff()
+               
 
                 if results is not None:
                     ## convert to string for display
