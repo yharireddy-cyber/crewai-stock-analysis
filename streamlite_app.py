@@ -123,6 +123,8 @@ class YahooFinanceTool(BaseTool):
                 todays_high = info.get("regularMarketDayHigh")
                 ##todays_low = info.get("regularMarketDayLow")
                 todays_open = info.get("regularMarketOpen")
+                
+            change_percent = stock.get_info().get("regularMarketChangePercent")
 
 
             # --- 2) Intraday change ---
@@ -151,6 +153,7 @@ class YahooFinanceTool(BaseTool):
             return (
                 f"Stock: {ticker.upper()}\n"
                 f"Current price: ${current:.2f}\n"
+                f"Change percent: {change_percent:.2f}%\n"
                 f"Intraday change: {intraday_pct:.2f}%\n"
                 f"One-year change: {one_year_change_text}\n"
                 f"Today's high: ${todays_high}\n"
@@ -180,6 +183,7 @@ def get_agent(fast_llm):
             "Price Snapshot:\n"
             "- Current price: $[price]\n"
             "- Today's high: $[price]\n"
+            "- Change percent: [percent]\n"
             ##"- Today's low: $[price]\n"
             "- Intraday change: [percent]\n"
             "- One-year change: [percent]\n\n"
