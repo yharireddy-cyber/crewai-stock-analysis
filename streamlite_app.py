@@ -99,7 +99,7 @@ class StockSearchTool(BaseTool):
 
 class YahooFinanceTool(BaseTool):
     name: str = "YahooFinanceData"
-    description: str = "Fetch live stock price and recent data from Yahoo Finance using yfinance library"
+    description: str = "Fetch live stock price and recent data from Yahoo Finance using yfinance library and dont hallucinate data if yfinance fails to fetch live data"
     args_schema: Type[BaseModel] = YahooFinanceInput
 
     def _run(self, ticker: str) -> str:
