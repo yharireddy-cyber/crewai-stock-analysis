@@ -105,6 +105,10 @@ class YahooFinanceTool(BaseTool):
     def _run(self, ticker: str) -> str:
         try:
             stock = yf.Ticker(ticker)
+            info = stock.get_info()
+            print("=================================================")
+            print(info["regularMarketPrice"])
+            print("=================================================")
             today = datetime.datetime.now().date()
 
             # --- 1) Get REAL live price (most reliable) ---
@@ -139,28 +143,36 @@ class YahooFinanceTool(BaseTool):
             end=today + datetime.timedelta(days=1)
             )
 
-            one_year_change_text = "data unavailable"
+            one_year_change = 0.0
 
             if not one_year_hist.empty and len(one_year_hist) > 1:
                 start_price = float(one_year_hist["Close"].iloc[0])
                 end_price = float(one_year_hist["Close"].iloc[-1])
 
             if start_price > 0:
-                change = (end_price - start_price) / start_price * 100
-                one_year_change_text = f"{change:.2f}%"
+                one_year_change = (end_price - start_price) / start_price * 100
 
             # --- 4) Format output ---
-            return (
-                f"Stock: {ticker.upper()}\n"
-                f"Current price: ${current:.2f}\n"
-                f"Today's percent Change: {change_percent:.2f}%\n"
-                f"Intraday percent change: {intraday_pct:.2f}%\n"
-                f"One-year percent change: {one_year_change_text:.2f}%\n"
-                f"Today's high: ${todays_high:.2f}\n"
-            )
+            # --- RETURN STRICT JSON ---
+            return {
+                "ticker": ticker.upper(),
+                "current": round(current, 2),
+                "change_percent": round(change_percent, 2),
+                "intraday_pct": round(intraday_pct, 2),
+                "one_year_change": round(one_year_change, 2),
+                "todays_high": round(todays_high, 2)
+            }
 
         except Exception as e:
-            return f"Error fetching stock data: {str(e)}"
+            return {
+                "ticker": ticker.upper(),
+                "current": 0.0,
+                "change_percent": 0.0,
+                "intraday_pct": 0.0,
+                "one_year_change": 0.0,
+                "todays_high": 0.0,
+                "error": str(e)
+            }
 
                     
 ## initializing the tools
@@ -171,28 +183,35 @@ yahoo_finance_tool = YahooFinanceTool()
 def get_agent(fast_llm):
     analyst_and_Writer = Agent(
         role="Stock Analyst and Report Writer Agent",
+        tools=[stock_search_tool, yahoo_finance_tool],
         goal=(
-            "Analyze the stock using ONLY the two provided tools: stock_new_search (for news) and YahooFinanceData (for financial data). "
-            "Do NOT use any other tools or external services. Focus only on news related to the company that directly impacts the stock price. "
-            "Provide insights and recommendations based on the latest news and financial data. Return ONLY stock insights and recommendations."
-            "Write a stock analysis report based on the insights provided by the analyst agent. "
-            "Format the output EXACTLY as follows with Markdown bullet points for the Price Snapshot section:\n\n"
+            "You MUST use ONLY the JSON fields returned by the YahooFinanceData tool. "
+            "NEVER rewrite, modify, round, estimate, or hallucinate numbers. "
+            "Copy the JSON values EXACTLY as provided. "
+            "The JSON fields you will receive are: "
+            "ticker, current, change_percent, intraday_pct, one_year_change, todays_high. "
+            "Your job is to write a stock analysis report using ONLY these JSON values. "
+            "Format the output EXACTLY as follows:\n\n"
             "Summary:\n"
-            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement. consider last one year stock price movement and latest news.\n\n"
+            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement.\n\n"
             "Price Snapshot:\n"
-            "- Current price: $[price]\n"
-            "- Today's percent Change: [percent]\n"
-            "- Today's high: $[price]\n"
-            "- Intraday percent change: [percent]\n"
-            "- One-year percent change: [percent]\n\n"
+            "- Current price: $[current]\n"
+            "- Today's percent Change: [change_percent]%\n"
+            "- Today's high: $[todays_high]\n"
+            "- Intraday percent change: [intraday_pct]%\n"
+            "- One-year percent change: [one_year_change]%\n\n"
             "Recommendation:\n"
-            "- One short conclusion with a buy/hold/sell view.\n"
-            "IMPORTANT: Do not present the Price Snapshot as a sentence or paragraph. Each metric must be its own bullet line beginning with '- '. "
-            "The summary and recommendation MUST be consistent with the Price Snapshot values. "
-            "Keep recommendation aligned with the data and keep it under 100 words. Do not mention specific price or percentage values in the summary, just a general performance overview."
+            "- One short conclusion with a buy/hold/sell view.\n\n"
+            "IMPORTANT RULES:\n"
+            "- DO NOT change any numbers.\n"
+            "- DO NOT infer or calculate new values.\n"
+            "- DO NOT use any values not present in the JSON.\n"
+            "- DO NOT hallucinate missing values.\n"
+            "- If a JSON field is null, write 'data unavailable'.\n"
+            "- Each metric MUST be its own bullet line.\n"
         ),
         backstory=(
-            "You are a stock analyst with expertise in financial markets. You have access to ONLY TWO TOOLS: 'stock_new_search' for news and 'YahooFinanceData' for financial data. "
+            "You are a stock analyst with expertise in financial markets. You have access to ONLY TWO TOOLS: 'stock_new_search' for news and 'YahooFinanceData' for financial data. and donot hallucinate data if yfinance fails to fetch live data. Use these tools to gather information and provide insights. Your task is to analyze the stock based on the latest news and financial data, and provide insights and recommendations. "
             "Do NOT attempt to use any other tools, functions, or external services. Do NOT invent tools. Only use the tools provided in this system. "
             "Use the available tools to surface the most recent and relevant information. "
             "Focus on news that has a direct impact on the stock price, such as earnings reports, product launches, regulatory changes, or market trends. "
@@ -200,9 +219,8 @@ def get_agent(fast_llm):
             "You are a skilled financial writer. Produce a concise and professional report using the requested sections. "
             "Make sure the summary  matches the price movement and that the recommendation is aligned with the data."
             "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from one year from analyze agent."),
-        llm=fast_llm,
-        tools=[stock_search_tool, yahoo_finance_tool]
-    )
+        llm=fast_llm
+        )
 
     return analyst_and_Writer
 
