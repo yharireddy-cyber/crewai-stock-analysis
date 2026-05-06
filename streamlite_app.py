@@ -153,11 +153,10 @@ class YahooFinanceTool(BaseTool):
             return (
                 f"Stock: {ticker.upper()}\n"
                 f"Current price: ${current:.2f}\n"
-                f"Change percent: {change_percent:.2f}%\n"
-                f"Intraday change: {intraday_pct:.2f}%\n"
-                f"One-year change: {one_year_change_text}\n"
-                f"Today's high: ${todays_high}\n"
-                ##f"Today's low: ${todays_low}"
+                f"Today's percent Change: {change_percent:.2f}%\n"
+                f"Intraday percent change: {intraday_pct:.2f}%\n"
+                f"One-year percent change: {one_year_change_text:.2f}%\n"
+                f"Today's high: ${todays_high:.2f}\n"
             )
 
         except Exception as e:
@@ -182,11 +181,10 @@ def get_agent(fast_llm):
             "- One sentence overview of the company outlook and top 3 factors driving the stock price movement. consider last one year stock price movement and latest news.\n\n"
             "Price Snapshot:\n"
             "- Current price: $[price]\n"
+            "- Today's percent Change: [percent]\n"
             "- Today's high: $[price]\n"
-            "- Change percent: [percent]\n"
-            ##"- Today's low: $[price]\n"
-            "- Intraday change: [percent]\n"
-            "- One-year change: [percent]\n\n"
+            "- Intraday percent change: [percent]\n"
+            "- One-year percent change: [percent]\n\n"
             "Recommendation:\n"
             "- One short conclusion with a buy/hold/sell view.\n"
             "IMPORTANT: Do not present the Price Snapshot as a sentence or paragraph. Each metric must be its own bullet line beginning with '- '. "
