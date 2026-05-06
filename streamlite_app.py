@@ -48,7 +48,7 @@ os.environ["SERPAPI_KEY"] = serpapi_key
 ##@st.cache_resource
 def get_llms(groq_key):
     fast_llm = LLM(
-        model="groq/llama-3.3-70b-versatile",
+        model="groq/llama-3.1-8b-instant", ##llama-3.3-70b-versatile",
         api_key=groq_key,
         temperature=0.15,
         max_tokens=200
@@ -85,7 +85,7 @@ class StockSearchTool(BaseTool):
             search = GoogleSearch(params)
             results = search.get_dict()
 
-            news = results.get("news_results", results.get("organic_results"), [])
+            news = results.get("news_results") or results.get("organic_results") or []
 
             output = []
             for item in news[:5]:
@@ -93,7 +93,8 @@ class StockSearchTool(BaseTool):
                 snippet = item.get("snippet", item.get("description", ""))
                 output.append(f"Title: {title}: {snippet[:100]}")
 
-            return "\n\n".join(output)
+            ##return "\n\n".join(output)
+            return {"news": output}
         except Exception as e:
             return f"Error fetching news: {str(e)}"
 
@@ -190,10 +191,10 @@ def get_agent(fast_llm):
             "Copy the JSON values EXACTLY as provided. "
             "The JSON fields you will receive are: "
             "ticker, current, change_percent, intraday_pct, one_year_change, todays_high. "
-            "Your job is to write a stock analysis report using ONLY these JSON values. "
+            "Your job is to write a stock analysis report using ONLY  JSON fields returned by YahooFinanceData and stock_search_tool."
             "Format the output EXACTLY as follows:\n\n"
             "Summary:\n"
-            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement.\n\n"
+            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement using JSON field news returned by  stock_search_tool.\n\n"
             "Price Snapshot:\n"
             "- Current price: $[current]\n"
             "- Today's percent Change: [change_percent]%\n"
@@ -201,7 +202,7 @@ def get_agent(fast_llm):
             "- Intraday percent change: [intraday_pct]%\n"
             "- One-year percent change: [one_year_change]%\n\n"
             "Recommendation:\n"
-            "- One short conclusion with a buy/hold/sell view.\n\n"
+            "- One short conclusion with a buy/hold/sell view based on the bews provided by YahooFinanceData and stock_search_tool. do not include any stock price or percentage details here\n\n"
             "IMPORTANT RULES:\n"
             "- DO NOT change any numbers.\n"
             "- DO NOT infer or calculate new values.\n"
