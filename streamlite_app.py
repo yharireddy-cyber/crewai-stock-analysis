@@ -176,12 +176,7 @@ def get_agent(fast_llm):
         role="Stock Analyst and Report Writer Agent",
         tools=[stock_search_tool, yahoo_finance_tool],
         goal=(
-            "You MUST use ONLY the JSON fields returned by the YahooFinanceData tool. "
-            "NEVER rewrite, modify, round, estimate, or hallucinate numbers. "
-            "Copy the JSON values EXACTLY as provided. "
-            "The JSON fields you will receive are: "
-            "ticker, current, change_percent, intraday_pct, one_year_change, todays_high. "
-            "Your job is to write a stock analysis report using ONLY  JSON fields returned by YahooFinanceData and stock_search_tool."
+            "You MUST use ONLY the JSON fields from YahooFinanceData and stock_new_search. Copy values exactly. No hallucination. Format output as Summary, Price Snapshot, Recommendation."
             "Format the output EXACTLY as follows:\n\n"
             "Summary:\n"
             "- One sentence overview of the company outlook and top 3 factors driving the stock price movement using JSON field news returned by  stock_search_tool.\n\n"
@@ -195,19 +190,11 @@ def get_agent(fast_llm):
             "- One short conclusion with a buy/hold/sell view based on the bews provided by YahooFinanceData and stock_search_tool. do not include any stock price or percentage details here\n\n"
             "IMPORTANT RULES:\n"
             "- DO NOT change any numbers.\n"
-            "- DO NOT infer or calculate new values.\n"
-            "- DO NOT use any values not present in the JSON.\n"
-            "- DO NOT hallucinate missing values.\n"
-            "- If a JSON field is null, write 'data unavailable'.\n"
-            "- Each metric MUST be its own bullet line.\n"
         ),
         backstory=(
             "You are a stock analyst with expertise in financial markets. You have access to ONLY TWO TOOLS: 'stock_new_search' for news and 'YahooFinanceData' for financial data. and donot hallucinate data if yfinance fails to fetch live data. Use these tools to gather information and provide insights. Your task is to analyze the stock based on the latest news and financial data, and provide insights and recommendations. "
             "Do NOT attempt to use any other tools, functions, or external services. Do NOT invent tools. Only use the tools provided in this system. "
-            "Use the available tools to surface the most recent and relevant information. "
             "Focus on news that has a direct impact on the stock price, such as earnings reports, product launches, regulatory changes, or market trends. "
-            "Provide insights and recommendations based on the data you gather. Your output should be concise and focused on actionable insights for the user."
-            "You are a skilled financial writer. Produce a concise and professional report using the requested sections. "
             "Make sure the summary  matches the price movement and that the recommendation is aligned with the data."
             "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from one year from analyze agent."),
         llm=fast_llm
