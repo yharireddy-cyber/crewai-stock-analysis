@@ -51,7 +51,7 @@ def get_llms(groq_key):
         model="groq/llama-3.1-8b-instant", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
         api_key=groq_key,
         temperature=0.15,
-        max_tokens=100
+        max_tokens=80
     )
 
     return fast_llm
@@ -210,7 +210,10 @@ def get_agent(fast_llm):
             "You are a skilled financial writer. Produce a concise and professional report using the requested sections. "
             "Make sure the summary  matches the price movement and that the recommendation is aligned with the data."
             "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from one year from analyze agent."),
-        llm=fast_llm
+        llm=fast_llm,
+        verbose=False,
+        max_rpm=1,
+        max_iter=1
         )
 
     return analyst_and_Writer
@@ -243,8 +246,16 @@ if analyze_button:
                     agents = [analyst_and_Writer],
                     tasks = [analyst_and_Writer_report_task]
                 )
-                results = crew.kickoff()
-               
+                ##results = crew.kickoff()
+                for attempt in range(3):
+                    try:
+                        results = crew.kickoff()
+                        break
+                    except Exception as e:
+                        if "rate_limit" in str(e).lower():
+                            datetime.time.sleep(5)
+                            continue
+                        raise e
 
                 if results is not None:
                     ## convert to string for display
