@@ -48,7 +48,7 @@ os.environ["SERPAPI_KEY"] = serpapi_key
 ##@st.cache_resource
 def get_llms(groq_key):
     fast_llm = LLM(
-        model="groq/llama-3.1-8b-instant", ##llama-3.3-70b-versatile",
+        model="groq/llama-3.3-70b-versatile", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
         api_key=groq_key,
         temperature=0.15,
         max_tokens=200
