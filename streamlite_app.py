@@ -51,7 +51,7 @@ def get_llms(groq_key):
         model="groq/llama-3.3-70b-versatile", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
         api_key=groq_key,
         temperature=0.15,
-        max_tokens=200
+        max_tokens=150
     )
 
     return fast_llm
