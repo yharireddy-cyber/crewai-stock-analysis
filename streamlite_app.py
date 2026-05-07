@@ -48,7 +48,7 @@ os.environ["SERPAPI_KEY"] = serpapi_key
 ##@st.cache_resource
 def get_llms(groq_key):
     fast_llm = LLM(
-        model="groq/llama-3.3-70b-versatile", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
+        model="groq/llama-3.1-8b-instant", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
         api_key=groq_key,
         temperature=0.15,
         max_tokens=200
@@ -210,10 +210,7 @@ def get_agent(fast_llm):
             "You are a skilled financial writer. Produce a concise and professional report using the requested sections. "
             "Make sure the summary  matches the price movement and that the recommendation is aligned with the data."
             "DO NOT mention stock price or pertage in summary just keep one line simple summary on stock or company performance from one year from analyze agent."),
-        llm=fast_llm,
-        verbose=False,
-        max_rpm=1,
-        max_iter=1
+        llm=fast_llm
         )
 
     return analyst_and_Writer
@@ -247,6 +244,7 @@ if analyze_button:
                     tasks = [analyst_and_Writer_report_task]
                 )
                 results = crew.kickoff()
+               
 
                 if results is not None:
                     ## convert to string for display
