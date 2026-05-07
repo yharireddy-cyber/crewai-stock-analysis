@@ -48,7 +48,7 @@ os.environ["SERPAPI_KEY"] = serpapi_key
 ##@st.cache_resource
 def get_llms(groq_key):
     fast_llm = LLM(
-        model="groq/llama-3.1-8b-instant", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
+        model="groq/llama-3.3-70b-versatile", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
         api_key=groq_key,
         temperature=0.15,
         max_tokens=200
@@ -246,16 +246,7 @@ if analyze_button:
                     agents = [analyst_and_Writer],
                     tasks = [analyst_and_Writer_report_task]
                 )
-                ##results = crew.kickoff()
-                for attempt in range(3):
-                    try:
-                        results = crew.kickoff()
-                        break
-                    except Exception as e:
-                        if "rate_limit" in str(e).lower():
-                            datetime.time.sleep(5)
-                            continue
-                        raise e
+                results = crew.kickoff()
 
                 if results is not None:
                     ## convert to string for display
