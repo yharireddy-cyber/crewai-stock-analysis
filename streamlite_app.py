@@ -107,9 +107,6 @@ class YahooFinanceTool(BaseTool):
         try:
             stock = yf.Ticker(ticker)
             info = stock.get_info()
-            print("=================================================")
-            print(info["regularMarketPrice"])
-            print("=================================================")
             today = datetime.datetime.now().date()
 
             # --- 1) Get REAL live price (most reliable) ---
@@ -165,15 +162,8 @@ class YahooFinanceTool(BaseTool):
             }
 
         except Exception as e:
-            return {
-                "ticker": ticker.upper(),
-                "current": 0.0,
-                "change_percent": 0.0,
-                "intraday_pct": 0.0,
-                "one_year_change": 0.0,
-                "todays_high": 0.0,
-                "error": str(e)
-            }
+            return f"Error fetching stock data: {str(e)}"
+            
 
                     
 ## initializing the tools
