@@ -33,8 +33,8 @@ with st.sidebar:
 
 
 # Read from Render environment
-groq_key = os.getenv("GROQ_API_KEY")
-serpapi_key = os.getenv("SERPAPI_KEY")
+#groq_key = os.getenv("GROQ_API_KEY")
+#serpapi_key = os.getenv("SERPAPI_KEY")
 
 if not groq_key or not serpapi_key:
     st.warning("Please enter both Groq and SerpAPI keys to use the app.")
@@ -51,7 +51,7 @@ def get_llms(groq_key):
         model="groq/llama-3.1-8b-instant", #llama-3.1-8b-instant, ##llama-3.3-70b-versatile,
         api_key=groq_key,
         temperature=0.15,
-        max_tokens=150
+        max_tokens=200
     )
 
     return fast_llm
@@ -176,7 +176,20 @@ def get_agent(fast_llm):
         role="Stock Analyst and Report Writer Agent",
         tools=[stock_search_tool, yahoo_finance_tool],
         goal=(
-            "You MUST use ONLY JSON fields from YahooFinanceData and stock_new_search. Copy values exactly. No hallucination. Format output as Summary, Price Snapshot, Recommendation."
+            "You MUST use ONLY the JSON fields from YahooFinanceData and stock_new_search. Copy values exactly. No hallucination. Format output as Summary, Price Snapshot, Recommendation."
+            "Format the output EXACTLY as follows:\n\n"
+            "Summary:\n"
+            "- One sentence overview of the company outlook and top 3 factors driving the stock price movement using JSON field news returned by  stock_search_tool.\n\n"
+            "Price Snapshot:\n"
+            "- Current price: $[current]\n"
+            "- Today's percent Change: [change_percent]%\n"
+            "- Today's high: $[todays_high]\n"
+            "- Intraday percent change: [intraday_pct]%\n"
+            "- One-year percent change: [one_year_change]%\n\n"
+            "Recommendation:\n"
+            "- One short conclusion with a buy/hold/sell view based on the bews provided by YahooFinanceData and stock_search_tool. do not include any stock price or percentage details here\n\n"
+            "IMPORTANT RULES:\n"
+            "- DO NOT change any numbers.\n"
         ),
         backstory=(
             "You are a stock analyst with expertise in financial markets. You have access to ONLY TWO TOOLS: 'stock_new_search' for news and 'YahooFinanceData' for financial data. and donot hallucinate data if yfinance fails to fetch live data. Use these tools to gather information and provide insights. Your task is to analyze the stock based on the latest news and financial data, and provide insights and recommendations. "
