@@ -33,8 +33,8 @@ with st.sidebar:
 
 
 # Read from Render environment
-#groq_key = os.getenv("GROQ_API_KEY")
-#serpapi_key = os.getenv("SERPAPI_KEY")
+groq_key = os.getenv("GROQ_API_KEY")
+serpapi_key = os.getenv("SERPAPI_KEY")
 
 if not groq_key or not serpapi_key:
     st.warning("Please enter both Groq and SerpAPI keys to use the app.")
